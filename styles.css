@@ -1,0 +1,55 @@
+body {
+    font-family: "Google Sans Code";
+    background-color: #212733;
+    color: #d9d7ce;
+}
+
+h1 {
+    font-size: 4rem;
+    margin-bottom: 0;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
+
+textarea {
+    background-color: #1b212c;
+    color: #d9d7ce;
+    outline: none;
+    border: none;
+    border-radius: 1rem;
+    padding: 1rem;
+    font-size: 1rem;
+    resize: none;
+}
+
+.btn {
+    background-color: #1b212c;
+    color: #d9d7ce;
+    outline: none;
+    border: 1px solid #2d3544;
+    border-radius: 0.75rem;
+    padding: 0.8rem 1.5rem;
+    font-family: "Google Sans Code";
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.btn:hover {
+    background-color: #242b38;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.pixelfont {
+    font-family: "Pixelify Sans";
+}
