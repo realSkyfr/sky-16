@@ -130,6 +130,40 @@ def parseline(ls) -> bytes:
             lns.append(int(ls[1], 16))
             lns.append(255)
             return struct.pack(">BHB", lns[0], lns[1], lns[2])
+            
+        case 'JIE':
+            lns = [0x41]
+            lns.append(int(ls[1], 16))
+            lns.append(parseregister(ls[2]))
+            lns.append(parseregister(ls[3]))
+            lns.append(255)
+            return struct.pack(">BHBBB", lns[0], lns[1], lns[2], lns[3], lns[4])
+            
+        case 'JNE':
+            print(ls)
+            lns = [0x42]
+            lns.append(int(ls[1], 16))
+            lns.append(parseregister(ls[2]))
+            lns.append(parseregister(ls[3]))
+            lns.append(255)
+            return struct.pack(">BHBBB", lns[0], lns[1], lns[2], lns[3], lns[4])
+            
+        # Comp Macro
+        case 'JIZ':
+            lns = [0x41]
+            lns.append(int(ls[1], 16))
+            lns.append(parseregister(ls[3]))
+            lns.append(0x00)
+            lns.append(255)
+            return struct.pack(">BHBBB", lns[0], lns[1], lns[2], lns[3], lns[4])
+          
+        # Comp Macro  
+        case 'JIC':
+            lns = [0x41]
+            lns.append(0x09)
+            lns.append(0x12)
+            lns.append(255)
+            return struct.pack(">BHBBB", lns[0], lns[1], lns[2], lns[3], lns[4])
         
         # Five Range
         case 'MOV':

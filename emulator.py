@@ -16,9 +16,12 @@ lenmap = {
     0x23: 0, # VUD
     
     0x40: 2, # JMP
+    0x41: 4, # JIE
+    0x42: 4, # JNE
     
     0x50: 3, # MOV
     0x51: 2, # CLN
+    
 }
 
 # for non-flip ALU operations
@@ -26,11 +29,12 @@ for i in range(0x0, 0x07):
     lenmap[i] = 2
     
 # for F-instructions
-for i in range(0xFC, 0xFD):
+for i in range(0xFC, 0xFF):
     lenmap[i] = 0
 
 instructions = []
 registers = array.array('H', [0] * 16)
+registers[9] = 1
 ram = array.array('H', [0] * 32768)
 vram = array.array('B', [0] * 64)
 
@@ -158,8 +162,26 @@ while not endexec:
         # JMP
         case 0x40:
             addr = int.from_bytes(instructions[idx][1:3], byteorder='big')
-            print(f"@0x{idx:04x} : JUMP 0x{addr - 1:04x}")
+            print(f"@0x{idx:04x} : JMP 0x{addr - 1:04x}")
             idx = addr - 2
+            
+        # JIE
+        case 0x41:
+            addr = int.from_bytes(instructions[idx][1:3], byteorder='big')
+            r1i = instructions[idx][3]
+            r2i = instructions[idx][4]
+            print(f"@0x{idx:04x} : JIE 0x{addr - 1:04x} (IF {registers[r1i] == registers[r2i]})")
+            if registers[r1i] == registers[r2i]:
+                idx = addr - 2
+            
+        # JNE
+        case 0x42:
+            addr = int.from_bytes(instructions[idx][1:3], byteorder='big')
+            r1i = instructions[idx][3]
+            r2i = instructions[idx][4]
+            print(f"@0x{idx:04x} : JIE 0x{addr - 1:04x} (IF {registers[r1i] != registers[r2i]})")
+            if registers[r1i] != registers[r2i]:
+                idx = addr - 2
 
         # MOV
         case 0x50:
@@ -180,8 +202,16 @@ while not endexec:
         case 0xFC:
             print(f"@0x{idx:04x} : HALT")
             endexec = True
+            
+        # NOP
+        case 0xFD:
+            print(f"@0x{idx:04x} : NOP")
+        
         case _:
             print(f"@0x{idx:04x} : EXCEPTION, INVALID OPERATION")
+            endexec = True
+            
+    print("@REGIST", registers.tolist())
         
     elapsed = time.time() - start
     if elapsed < interval:
