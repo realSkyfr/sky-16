@@ -1,3 +1,4 @@
+<!doctype html>
 <html>
     <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -7,6 +8,7 @@
             rel="stylesheet"
         />
         <link rel="stylesheet" href="styles.css" />
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     </head>
     <body>
         <header>
@@ -28,10 +30,10 @@
                 cols="50"
                 readonly
             ></textarea>
-            <button class="btn">START</button>
-            <button class="btn">PAUSE</button>
-            <button class="btn">STEP</button>
+            <button class="btn" name="start" id="start">START</button>
             <button class="btn">RESET</button>
         </main>
+
+        <script type="module" src="/runtime.js"></script>
     </body>
 </html>

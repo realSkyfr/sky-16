@@ -1,220 +1,191 @@
-# made by me
-# screw you theres magic numbers read the isc
-
 import array
+import asyncio
+import functools
+import sys
 import time
 
+print = functools.partial(print, flush=True)
 
-def emulate(bin: bytes):
-    # The length is the amount of *BYTES* (not bits or words) between the instruction and the EOL flag
-    lenmap = {
-        0x08: 1,  # Flip
-        0x10: 3,  # Load
-        0x11: 3,  # Set
-        0x20: 1,  # VSR
-        0x21: 4,  # VSM
-        0x22: 0,  # VCR
-        0x23: 0,  # VUD
-        0x40: 2,  # JMP
-        0x41: 4,  # JIE
-        0x42: 4,  # JNE
-        0x50: 3,  # MOV
-        0x51: 2,  # CLN
-    }
 
-    # for non-flip ALU operations
-    for i in range(0x0, 0x07):
-        lenmap[i] = 2
+def emulate(bin: bytes, hertz: int = 1000):
+    async def run_emu():
+        nonlocal bin
+        lenmap = {
+            0x08: 1,
+            0x10: 3,
+            0x11: 3,
+            0x20: 1,
+            0x21: 4,
+            0x22: 0,
+            0x23: 0,
+            0x40: 2,
+            0x41: 4,
+            0x42: 4,
+            0x50: 3,
+            0x51: 2,
+        }
 
-    # for F-instructions
-    for i in range(0xFC, 256):
-        lenmap[i] = 0
+        for i in range(0x0, 0x07):
+            lenmap[i] = 2
 
-    instructions = []
-    registers = array.array("H", [0] * 16)
-    registers[9] = 1
-    ram = array.array("H", [0] * 32768)
-    vram = array.array("B", [0] * 64)
+        for i in range(0xFC, 256):
+            lenmap[i] = 0
 
-    while len(bin) > 0:
-        i = bin[0]
-        length = lenmap[i] + 2
-        instructions.append(bin[:length])
-        bin = bin[length:]
+        instructions = []
+        registers = array.array("H", [0] * 16)
+        registers[9] = 1
+        ram = array.array("H", [0] * 32768)
+        vram = array.array("B", [0] * 64)
 
-    idx = 0
-    endexec = False
-    hertz = 1000
-    interval = 1 / hertz
-    print(f"---BEGIN EXEC {hertz}HZ---")
-    while not endexec:
-        start = time.time()
-        match int.from_bytes(instructions[idx][:1], byteorder="big"):
-            # ADD
-            case 0x00:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = (r1 + r2) & 0xFFFF  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) += x{r2i}({r2})")
+        while len(bin) > 0:
+            i = bin[0]
+            length = lenmap[i] + 2
+            instructions.append(bin[:length])
+            bin = bin[length:]
 
-            # SUB
-            case 0x01:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = r1 - r2  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) -= x{r2i}({r2})")
+        idx = 0
+        iters = 0
+        endexec = False
+        print(f"---BEGIN EXEC {hertz}HZ---")
 
-            # MUL
-            case 0x02:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = r1 * r2  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) *= x{r2i}({r2})")
+        while not endexec and idx < len(instructions):
+            op_code = int.from_bytes(instructions[idx][:1], byteorder="big")
 
-            # AND
-            case 0x03:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = r1 & r2  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) &= x{r2i}({r2})")
+            match op_code:
+                case 0x00:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = (r1 + r2) & 0xFFFF
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) += x{r2i}({r2})")
 
-            # OR
-            case 0x04:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = r1 | r2  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) |= x{r2i}({r2})")
+                case 0x01:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = (r1 - r2) & 0xFFFF
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) -= x{r2i}({r2})")
 
-            # XOR
-            case 0x05:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = r1 ^ r2  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) ^= x{r2i}({r2})")
+                case 0x02:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = (r1 * r2) & 0xFFFF
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) *= x{r2i}({r2})")
 
-            # LFS
-            case 0x06:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = r1 << r2  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) <<= x{r2i}({r2})")
+                case 0x03:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = r1 & r2
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) &= x{r2i}({r2})")
 
-            # RFS
-            case 0x07:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r1 = registers[r1i]
-                r2 = registers[r2i]
-                registers[11] = r1  # access to p1
-                registers[12] = r2  # access to p2
-                registers[15] = r1 >> r2  # setting ret
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1}) >>= x{r2i}({r2})")
+                case 0x04:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = r1 | r2
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) |= x{r2i}({r2})")
 
-            # FLP
-            case 0x08:
-                r1i = instructions[idx][1]
-                r1 = registers[r1i]
-                registers[15] = ~r1
-                registers[r1i] = registers[15]
-                print(f"@0x{idx:04x} : x{r1i}({r1})~~")
+                case 0x05:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = r1 ^ r2
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) ^= x{r2i}({r2})")
 
-            # JMP
-            case 0x40:
-                addr = int.from_bytes(instructions[idx][1:3], byteorder="big")
-                print(f"@0x{idx:04x} : JMP 0x{addr - 1:04x}")
-                idx = addr - 2
+                case 0x06:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = (r1 << r2) & 0xFFFF
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) <<= x{r2i}({r2})")
 
-            # JIE
-            case 0x41:
-                addr = int.from_bytes(instructions[idx][1:3], byteorder="big")
-                r1i = instructions[idx][3]
-                r2i = instructions[idx][4]
-                print(
-                    f"@0x{idx:04x} : JIE 0x{addr - 1:04x} (IF {registers[r1i] == registers[r2i]})"
-                )
-                if registers[r1i] == registers[r2i]:
+                case 0x07:
+                    r1i, r2i = instructions[idx][1], instructions[idx][2]
+                    r1, r2 = registers[r1i], registers[r2i]
+                    registers[11], registers[12] = r1, r2
+                    registers[15] = r1 >> r2
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1}) >>= x{r2i}({r2})")
+
+                case 0x08:
+                    r1i = instructions[idx][1]
+                    r1 = registers[r1i]
+                    registers[15] = (~r1) & 0xFFFF
+                    registers[r1i] = registers[15]
+                    print(f"@0x{idx:04x} : x{r1i}({r1})~~")
+
+                case 0x40:
+                    addr = int.from_bytes(instructions[idx][1:3], byteorder="big")
+                    print(f"@0x{idx:04x} : JMP 0x{addr - 1:04x}")
                     idx = addr - 2
 
-            # JNE
-            case 0x42:
-                addr = int.from_bytes(instructions[idx][1:3], byteorder="big")
-                r1i = instructions[idx][3]
-                r2i = instructions[idx][4]
-                print(
-                    f"@0x{idx:04x} : JNE 0x{addr - 1:04x} (IF {registers[r1i] != registers[r2i]})"
-                )
-                if registers[r1i] != registers[r2i]:
-                    idx = addr - 2
+                case 0x41:
+                    addr = int.from_bytes(instructions[idx][1:3], byteorder="big")
+                    r1i = instructions[idx][3]
+                    r2i = instructions[idx][4]
+                    print(
+                        f"@0x{idx:04x} : JIE 0x{addr - 1:04x} (IF {registers[r1i] == registers[r2i]})"
+                    )
+                    if registers[r1i] == registers[r2i]:
+                        idx = addr - 2
 
-            # MOV
-            case 0x50:
-                register = instructions[idx][1]
-                val = int.from_bytes(instructions[idx][2:4], byteorder="big")
-                registers[register] = val
-                print(f"@0x{idx:04x} : x{register} = {val}")
+                case 0x42:
+                    addr = int.from_bytes(instructions[idx][1:3], byteorder="big")
+                    r1i = instructions[idx][3]
+                    r2i = instructions[idx][4]
+                    print(
+                        f"@0x{idx:04x} : JNE 0x{addr - 1:04x} (IF {registers[r1i] != registers[r2i]})"
+                    )
+                    if registers[r1i] != registers[r2i]:
+                        idx = addr - 2
 
-            # CLN
-            case 0x51:
-                r1i = instructions[idx][1]
-                r2i = instructions[idx][2]
-                r2 = registers[r2i]
-                registers[r1i] = r2
-                print(f"@0x{idx:04x} : x{r1i} = {r2}")
+                case 0x50:
+                    register = instructions[idx][1]
+                    val = int.from_bytes(instructions[idx][2:4], byteorder="big")
+                    registers[register] = val
+                    print(f"@0x{idx:04x} : x{register} = {val}")
 
-            # HLT
-            case 0xFC:
-                print(f"@0x{idx:04x} : HALT")
-                endexec = True
+                case 0x51:
+                    r1i = instructions[idx][1]
+                    r2i = instructions[idx][2]
+                    r2 = registers[r2i]
+                    registers[r1i] = r2
+                    print(f"@0x{idx:04x} : x{r1i} = {r2}")
 
-            # NOP
-            case 0xFD:
-                print(f"@0x{idx:04x} : NOP")
+                case 0xFC:
+                    print(f"@0x{idx:04x} : HALT")
+                    endexec = True
 
-            case _:
-                print(f"@0x{idx:04x} : EXCEPTION, INVALID OPERATION")
-                endexec = True
+                case 0xFD:
+                    print(f"@0x{idx:04x} : NOP")
 
-        print("@REGIST", registers.tolist())
+                case _:
+                    print(f"@0x{idx:04x} : EXCEPTION, INVALID OPERATION")
+                    endexec = True
 
-        elapsed = time.time() - start
-        if elapsed < interval:
-            time.sleep(interval - elapsed)
+            print("@REGIST", registers.tolist())
 
-        idx += 1
-    print("---END EXEC---")
+            iters += 1
+            idx += 1
+
+            if iters % 10 == 0:
+                await asyncio.sleep(0)
+
+        print("---END EXEC---")
+
+    asyncio.create_task(run_emu())
+
+
+if __name__ == "__main__":
+    with open("out.bin", "rb") as f:
+        data = f.read()
+        emulate(data, 1000)

@@ -5,7 +5,6 @@ def assemble(data: str) -> bytes:
     tape = b""
 
     ins = [line.split() for line in data.strip().splitlines()]
-    print(ins)
 
     def parseregister(reg) -> int:
         if reg != "x0" and reg.startswith("x"):
@@ -139,7 +138,6 @@ def assemble(data: str) -> bytes:
                 return struct.pack(">BHBBB", lns[0], lns[1], lns[2], lns[3], lns[4])
 
             case "JNE":
-                print(ls)
                 lns = [0x42]
                 lns.append(int(ls[1], 16))
                 lns.append(parseregister(ls[2]))
@@ -194,3 +192,13 @@ def assemble(data: str) -> bytes:
     # print(tape)
 
     return tape
+
+
+if __name__ == "__main__":
+    with open("fib.s16", "r") as f:
+        data = f.read()
+
+    comp = assemble(data)
+
+    with open("out.bin", "wb") as f:
+        f.write(comp)
