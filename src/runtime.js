@@ -16,8 +16,18 @@ async function init() {
     // 1. Load the engine
     pyodide = await loadPyodide({
       stdout: (text) => {
-        outElement.value += text + "\n";
-        outElement.scrollTop = outElement.scrollHeight;
+        const out = document.getElementById("stdout");
+        let lines = out.value.split("\n");
+
+        lines.push(text);
+
+        // Keep only the last 100 lines to prevent lag
+        if (lines.length > 100) {
+          lines = lines.slice(-100);
+        }
+
+        out.value = lines.join("\n");
+        out.scrollTop = out.scrollHeight;
       },
       stderr: (text) => {
         outElement.value += `\n[STDERR]: ${text}\n`;

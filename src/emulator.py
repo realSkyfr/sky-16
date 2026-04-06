@@ -1,8 +1,6 @@
 import array
 import asyncio
 import functools
-import sys
-import time
 
 print = functools.partial(print, flush=True)
 
@@ -177,10 +175,10 @@ def emulate(bin: bytes, hertz: int = 1000):
             iters += 1
             idx += 1
 
-            if iters % 10 == 0:
-                await asyncio.sleep(0)
+            if iters % 5 == 0:
+                await asyncio.sleep(0.1)
 
-        print("---END EXEC---")
+        print(f"---END EXEC {iters} CYCLES---")
 
     asyncio.create_task(run_emu())
 

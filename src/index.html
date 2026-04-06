@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&family=Pixelify+Sans:wght@400..700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="styles.css" />
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+    </head>
+    <body>
+        <header>
+            <h2>emulator</h2>
+        </header>
+        <hr />
+        <main>
+            <p>ASSEMBLY (1 instruction per cycle)</p>
+            <textarea id="asm" name="asm" rows="30" cols="50"></textarea>
+            <hr />
+
+            <p></p>
+            <p>EXCECUTION</p>
+            <textarea
+                id="stdout"
+                name="stdout"
+                rows="10"
+                cols="50"
+                readonly
+            ></textarea>
+            <button class="btn" name="start" id="start">START</button>
+            <button class="btn">RESET</button>
+        </main>
+
+        <script type="module" src="/runtime.js"></script>
+    </body>
+</html>
